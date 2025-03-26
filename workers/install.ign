@@ -1,0 +1,21 @@
+{
+  "ignition": {
+    "version": "3.3.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "groups": [
+          "docker"
+        ],
+        "name": "core",
+        "passwordHash": "$y$j9T$CtGIbNZlD9CntbkyGeMUR/$hE8GUJP9qzurbusE.UebA9x6c1BDYBmBvZnoFRwOjx7",
+        "sshAuthorizedKeys": [
+          "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAEkXPyDqNY1kPsQhexS4xtim8m6qHnnv8uXsnswHSg99AUEuwBvEShm4M6pxe2hAngOjHVcKOBmHhJakmdbs9PaiwA/yvf8WDOSeYQgYA51Dv835i2GCRGmDI0lC54YCiJioJWcIu2AJAhrCSSqrYMZF+XDuIg53Lckf11yVI3ChwEywA== czogbelemou@ns-1",
+          "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBACuEbriJEFsP3rgqTXFM/nfOONnUVCkS8HV5n4/5V4hnHoeEkLGgb+WkmfkYD3fGewLvPRUb9JjrwmoMyir6ndLNQCo9ubAskBe7tk6Wt0RdSKlbQVjxHx967lKAeFCu3SKtnh4OhmZfSdb68vk9oDb/FJbz0l4A9HYMjghuIA9QxUpvw== cruiz@ns-1",
+          "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyxGpFC4tLPbm1oiHWN8yYzo3HLi0eIn+whfOI2jev+GbhdKtdww4McHSpbaAkrqnKH9NnLcqffvPzyw5ZaY6A1gGO1e3vVyBLGscIov+uZl+qfNDX0qUA9vpxio2iGZabuRi2heonDfYhR3VQu4dIVTcSHO+nu0VHBBD1087VSJ7lJA== mcharette@ns-1"
+        ]
+      }
+    ]
+  }
+}

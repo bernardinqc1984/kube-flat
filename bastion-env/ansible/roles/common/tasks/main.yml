@@ -1,0 +1,77 @@
+- name: Upgrade all packages
+  ansible:
+    builtin:
+      dnf:
+        name: *
+        state: latest
+
+- name: install epel-release
+  ansible:
+    bultin:
+      dnf:
+        name: epel-release
+        state: latest
+
+- name: install packages
+  ansible:
+    builtin:
+      dnf:
+        name: "{{ packages }}"
+        state: latest
+
+- name: Add two IPv4 DNS server addresses
+  nmcli:
+    conn_name: ens192
+    type: ethernet
+    dns4:
+      - "{{ ('bastion-vm' in group_names) | ternary('127.0.0.1', dns.forwarder1) }}"
+      - "{{ dns.forwarder2 }}"
+    dns4_search:
+      - "{{ dns.clusterid }}.{{ dns.domain | lower }}"
+      - "{{ dns.domain | lower }}"
+    state: present
+  notify: restart NetworkManager
+  tags: resolv
+
+
+- name: Create chrony.conf file
+  template:
+    src: chrony.conf.j2
+    dest: /etc/chrony.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - restart chronyd
+  tags: ntp
+
+- name: Start chronyd service
+  systemd:
+    name: chronyd
+    state: started
+    enabled: yes
+  tags: ntp
+
+- name: Prompt config
+  template:
+    src: ../../templates/prompt.j2
+    dest: /etc/profile.d/prompt.sh
+    owner: root
+    group: root
+    mode: '0644'
+  tags: prompt
+
+- name: Sudo config
+  template:
+    src: sudoers.j2
+    dest: /etc/sudoers.d/cirrus
+  tags: sudo
+
+
+- name: sshd config
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+  notify:
+      - reload sshd
+

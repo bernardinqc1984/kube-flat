@@ -1,0 +1,4 @@
+cirrus      ALL=(ALL)   NOPASSWD: ALL
+{% for user in cirrus_admin %}
+{{ user }}     ALL=(ALL)   NOPASSWD: ALL
+{% endfor %}

@@ -1,0 +1,59 @@
+$TTL 1W
+@	IN	SOA	{{ dns.name }}.{{ dns.clusterid }}.{{ dns.domain | lower }}.	root (
+			{{ serialnumber }}	; serial
+			3H		; refresh (3 hours)
+			30M		; retry (30 minutes)
+			2W		; expiry (2 weeks)
+			1W )		; minimum (1 week)
+	IN	NS	{{ dns.name }}.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+	IN	MX 10	smtp.{{ dns.clusterid }}.{{ dns.domain | lower }}.
+;
+;
+{{ dns.name }}	IN	A	{{ dns.ipaddr }}
+smtp	IN	A	{{ dns.ipaddr }}
+;
+{{ dns.name | lower }}	IN	A	{{ dns.ipaddr }}
+ntp1	IN	A	{{ dns.ipaddr }}
+;
+;
+; The api points to the IP of your load balancer
+{% if lb.ipaddr is defined %}
+api			IN	A	{{ lb.ipaddr }}
+api-int		IN	A	{{ lb.ipaddr }}
+;
+{% endif %}
+; The wildcard also points to the load balancer
+*.apps		IN	A	{{ lb.ipaddr }}
+;
+{% if bootstrap is defined %}
+; Create entry for the bootstrap host
+{{ bootstrap.name | lower }}	IN	A	{{ bootstrap.ipaddr }}
+;
+{% endif %}
+; Create entries for the master hosts
+{% for m in masters %}
+{{ m.name | lower }}		IN	A	{{ m.ipaddr }}
+{% endfor %}
+;
+; Create entries for the worker hosts
+{% if workers is defined %}
+{% for w in workers %}
+{{ w.name | lower }}		IN	A	{{ w.ipaddr }}
+{% endfor %}
+{% endif %}
+;
+{% if infra is defined %}
+; Create entries for the infra hosts
+{% for i in infra %}
+{{ i.name }}		IN	A	{{ i.ipaddr }}
+{% endfor %}
+;
+{% endif %}
+{% if other is defined %}
+; Create entries for the other hosts
+{% for o in other %}
+{{ o.name }}		IN	A	{{ o.ipaddr }}
+{% endfor %}
+;
+{% endif %}
+;EOF

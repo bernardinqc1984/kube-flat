@@ -1,0 +1,46 @@
+---
+disk: sda
+helper:
+  name: "helper"
+  ipaddr: "10.16.144.5"
+dns:
+  domain: "cirrus.appcirrus.ca"
+  clusterid: "kube-stab"
+  forwarder1: "10.15.0.2"
+  forwarder2: "10.15.0.3"
+  name: "bastion-vm"
+  ipaddr: "10.16.144.5"
+  email: "czogbelemou@micrologic.ca"
+lb:
+  name: "lb-kubernetes"
+  ipaddr: "10.16.144.62"
+dhcp:
+  networkifacename: "ens192"
+  router: "10.16.144.1"
+  bcast: "10.16.144.255"
+  netmask: "255.255.255.0"
+  poolstart: "10.16.144.30"
+  poolend: "10.16.144.50"
+  ipid: "10.16.144.30"
+  netmaskid: "255.255.255.0"
+  dns: "10.16.144.5"
+masters:
+  - name: "k8s-master01"
+    ipaddr: "10.16.144.33"
+    macaddr: "04:3f:72:f7:2f:76"
+  - name: "k8s-master02"
+    ipaddr: "10.16.144.34"
+    macaddr: "04:3f:72:f7:31:2e"
+  - name: "k8s-master03"
+    ipaddr: "10.16.144.36"
+    macaddr: "04:3f:72:f5:a7:2a"
+workers:
+  - name: "k8s-worker01"
+    ipaddr: "10.16.144.36"
+    macaddr: "04:3f:72:f5:a7:26"
+  - name: "k8s-worker02"
+    ipaddr: "10.16.144.37"
+    macaddr: "04:3f:72:f5:a7:20"
+  - name: "k8s-worker03"
+    ipaddr: "10.16.144.38"
+    macaddr: "04:3f:72:df:1a:cc"

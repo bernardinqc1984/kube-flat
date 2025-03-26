@@ -1,0 +1,8 @@
+ports:
+- 22/tcp
+- 80/tcp
+- 443/tcp
+- 6443/tcp
+- 8200/tcp
+- 9000/tcp
+- 22623/tcp

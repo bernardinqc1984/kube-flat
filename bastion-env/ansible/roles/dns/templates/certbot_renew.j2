@@ -1,0 +1,24 @@
+#!/bin/bash
+
+EMAIL="{{ dns.email }}"
+CLIENT="{{ dns.clusterid }}"
+DOMAIN="${CLIENT}.{{ dns.domain }}"
+
+docker run -it --rm --name certbot \
+  -v "$(pwd)/cloudflare:/opt/cloudflare" \
+  -v "/etc/letsencrypt:/etc/letsencrypt" \
+  -v "/etc/letsencrypt/log:/var/log/letsencrypt" \
+  certbot/dns-cloudflare \
+  renew \
+  --dns-cloudflare \
+  --dns-cloudflare-credentials /opt/cloudflare/credentials \
+  --dns-cloudflare-propagation-seconds 60 \
+  --agree-tos \
+  --email "${EMAIL}" \
+  --cert-name apps.${DOMAIN}
+
+sleep 30
+
+sudo chgrp ocp /etc/letsencrypt/{archive,live}/ /etc/letsencrypt/archive/*/*.pem
+sudo chmod g+rwx /etc/letsencrypt/{archive,live}/
+sudo chmod g+r /etc/letsencrypt/archive/*/*.pem

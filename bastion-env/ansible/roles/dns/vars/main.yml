@@ -1,0 +1,14 @@
+packages:
+  - bind
+  - bind-utils
+  - httpd
+  - certbot
+  - yum-utils
+  - jq
+  - python39
+
+dhcppkgs:
+  - dhcp-server
+  - tftp-server
+
+repo_name: cirrus-kubernetes-vcd

@@ -1,0 +1,9 @@
+---
+kubectl_version: "v1.30.4"
+ports:
+- 22/tcp
+- 53/tcp
+- 53/udp
+- 67/udp
+- 123/tcp
+- 8080/tcp

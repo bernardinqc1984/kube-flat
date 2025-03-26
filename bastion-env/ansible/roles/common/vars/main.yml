@@ -1,0 +1,5 @@
+packages:
+  - vim
+  - screen
+  - python3-passlib
+  - netcat

@@ -1,0 +1,41 @@
+- name: Install needed packages
+  package:
+    name: "{{ packages }}"
+    state: present
+
+- name: Write out haproxy config file
+  template:
+    src: ../templates/haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+  tags: haproxy
+  notify:
+    - restart haproxy
+
+- name: SEBool allow haproxy connect any port
+  seboolean:
+    #ignore_selinux_state: yes
+    name: haproxy_connect_any
+    state: yes
+    persistent: yes
+  notify:
+    - restart haproxy
+
+- name: Start firewalld service
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+  tags: firewall
+
+- name: Open up firewall ports
+  firewalld:
+    permanent: yes
+    immediate: yes
+    state: enabled
+    port: "{{ item[0] }}"
+  delegate_to: "{{ item[1] }}"
+  run_once: true
+  with_nested:
+    - "{{ ports }}"
+    - "{{ ansible_play_batch }}"
+  tags: firewall

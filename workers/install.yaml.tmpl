@@ -1,0 +1,35 @@
+---
+variant: flatcar
+version: 1.0.0
+passwd:
+  users:
+    - name: core
+      password_hash: $y$j9T$CtGIbNZlD9CntbkyGeMUR-----------
+      groups:
+        - docker
+      ssh_authorized_keys:
+        - "ssh-rsa PUBLIC_KEY"
+storage:
+  files:
+    # Configure automatic updates without rebooting
+    - path: /etc/flatcar/update.conf
+      overwrite: true
+      contents:
+        inline: |
+          REBOOT_STRATEGY=off
+      mode: 0420 # Read-only for root
+
+    - path: /etc/motd.d/pi.conf
+      mode: 0644
+      contents:
+        inline: This machine is dedicated to computing kubernetes
+
+systemd:
+  units:
+    - name: getty@.service
+      dropins:
+        - name: 10-autologin.conf
+          contents: |
+            [Service]
+            ExecStart=
+            ExecStart=-/sbin/agetty --noclear %I $TERM

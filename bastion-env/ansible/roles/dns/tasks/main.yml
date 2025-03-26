@@ -1,0 +1,251 @@
+- name: Install needed packages bastion-vm
+  package:
+    name: "{{ packages }}"
+    state: present
+  tags: rpm
+
+  # Setup named configuration files
+- name: Installing DNS Serialnumber generator
+  copy:
+    src: set-dns-serial.sh
+    dest: /usr/local/bin/set-dns-serial.sh
+    mode: '0555'
+  tags: dns
+
+- name: Set zone serial number
+  shell: "/usr/local/bin/set-dns-serial.sh"
+  register: dymanicserialnumber
+  check_mode: false
+  tags: dns
+
+- name: Setting serial number as a fact
+  set_fact:
+    serialnumber: "{{ dymanicserialnumber.stdout }}"
+  tags: dns
+
+- name: Write out 0.16.172 reverse zone file
+  template:
+    src: '../templates/reverse_144.16.10.j2'
+    dest: /var/named/144.16.10.db
+    mode: '0644'
+  notify:
+    - restart bind
+  register: named
+  tags: dns
+
+- name: Write out 255.16.172 reverse zone file
+  template:
+    src: '../templates/reverse_62.144.16.10.j2'
+    dest: /var/named/62.144.16.10.db
+    mode: '0644'
+  notify:
+    - restart bind
+  register: named
+  tags: dns
+
+- name: Write out named file
+  template:
+    src: 'templates/named.conf.j2'
+    dest: /etc/named.conf
+  notify:
+    - restart bind
+  tags: dns
+
+- name: Start firewalld service
+  systemd:
+    name: firewalld
+    state: started
+    enabled: yes
+  tags: firewall
+
+- name: Open up firewall ports
+  firewalld:
+    permanent: yes
+    immediate: yes
+    state: enabled
+    port: "{{ item[0] }}"
+  delegate_to: "{{ item[1] }}"
+  run_once: true
+  with_nested:
+    - "{{ ports }}"
+    - "{{ ansible_play_batch }}"
+  tags: firewall
+
+- name: Copy httpd conf file
+  copy:
+    src: httpd.conf
+    dest: /etc/httpd/conf/httpd.conf
+  notify:
+    - restart httpd
+  tags: httpd
+
+- name: Install packages for DHCP install
+  package:
+    name: "{{ dhcppkgs }}"
+    state: present
+  tags: dhcp
+
+- name: Write out dhcp file
+  template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+  notify:
+    - restart dhcpd
+  tags: dhcpd
+
+- name: Create a directory if it does not exist
+  file:
+    path: /home/cirrus/certbot/
+    state: directory
+    mode: '0750'
+    owner: "cirrus"
+  tags: certbot
+
+- name: Certbot create script
+  template:
+    src: certbot_create.j2
+    dest: /home/cirrus/certbot/create.sh
+    mode: '0750'
+    owner: "cirrus"
+  tags: certbot
+
+- name: Certbot create test script
+  template:
+    src: certbot_create_test.j2
+    dest: /home/cirrus/certbot/create_test.sh
+    mode: '0750'
+    owner: "cirrus"
+  tags: certbot
+
+- name: Certbot renew script
+  template:
+    src: certbot_renew.j2
+    dest: /home/cirrus/certbot/renew.sh
+    mode: '0750'
+    owner: "cirrus"
+  tags: certbot
+
+- name: Certbot renew test script
+  template:
+    src: certbot_renew_test.j2
+    dest: /home/cirrus/certbot/renew_test.sh
+    mode: '0750'
+    owner: "cirrus"
+  tags: certbot
+
+- name: Create a directory if it does not exist
+  file:
+    path: /home/cirrus/certbot/cloudflare/
+    state: directory
+    mode: '0750'
+    owner: "cirrus"
+  tags: certbot
+
+- name: Installing cloudflare
+  copy:
+    src: cloudflare
+    dest: /home/cirrus/certbot/cloudflare/credentials
+    owner: "cirrus"
+    mode: '0600'
+  tags: certbot
+
+- name: Create apache directories for installing
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0775'
+    group: ocp
+  with_items:
+    - /var/www/html/install
+    - /var/www/html/ignition
+  tags: httpd
+
+- name: Downloading kubectl
+  shell: |
+    cd /usr/local/src/
+    curl -LsO https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl
+    chmod 755 kubectl
+    mv kubectl /usr/local/bin/
+  args:
+    creates: /usr/local/bin/kubectl
+  tags: kubectl
+  ignore_errors: true
+
+# OpenTofu cli
+
+- name: install opentofu
+  shell: |
+    cd /usr/local/src/ 
+    curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh 
+    chmod +x install-opentofu.sh 
+    ./install-opentofu.sh --install-method rpm 
+    rm install-opentofu.sh 
+    
+
+- name: Install Ansible
+  shell: |
+    sudo -i -u {{ item }} -- pip3.9 install pyvcloud lxml requests openshift kubernetes
+    sudo -i -u {{ item }} -- ansible-galaxy collection install kubernetes.core
+  args:
+    creates: /home/{{ item }}/.local/bin/ansible
+  with_items: "{{ cirrus_admin }}"
+  tags: ansible
+
+- name: Install vcd
+  shell: |
+    sudo -i -u {{ item }} -- pip3 install --upgrade --user pip
+    sudo -i -u {{ item }} -- pip3 install --user vcd-cli
+  args:
+    creates: /home/{{ item }}/.local/bin/vcd
+  with_items: "{{ cirrus_admin }}"
+  tags: vcd
+
+- name: Add Docker repository
+  shell: yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+  args:
+     creates: /etc/yum.repos.d/docker-ce.repo
+  tags: docker
+  
+#- name: Install Docker packages
+#  yum:
+#    name:
+#      - docker-ce
+#      - docker-ce-cli
+#    state: latest
+#  tags: docker
+  
+#- name: Adding admin users to group docker
+#  user:
+#    name: "{{ item }}"
+#    groups: docker
+#    append: yes
+#  with_items: "{{ cirrus_admin }}"
+#  tags: docker
+
+- name: Create a directory if it does not exist
+  file:
+    path: /opt/ocp4
+    state: directory
+    mode: '0770'
+    owner: "root"
+    group: "ocp"
+  tags: ocp4
+
+- name: Starting services
+  service:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  with_items:
+    - named
+    - httpd
+    - dhcpd
+    - chronyd
+#    - docker
+  tags:
+    - named
+    - httpd
+    - dhcpd
+    - ntp
+#    - docker
+
