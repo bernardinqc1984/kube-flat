@@ -58,9 +58,9 @@ elif [ "$1" = "postcustomization" ]; then
 
 # Users list with their ssh key
   declare -A users=(
-    ["cirrus"]="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZz3z1Z.................."
-    ["czogbelemou"]="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZz3z1Z.................."
-    ["mcharette"]="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZz3z1Z.................."
+    ["cs"]="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZz3z1Z.................."
+    ["cuser"]="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZz3z1Z.................."
+    ["cuser2"]="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDZz3z1Z.................."
   )
 
 # Loop to create the users
