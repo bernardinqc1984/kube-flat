@@ -1,68 +1,47 @@
-# Create app port profile
-resource "vcd_nsxt_app_port_profile" "dns" {
-  name  = "DNS-Services"
+# Retrieve native application port profiles for standard services
+data "vcd_nsxt_app_port_profile" "dns" {
   scope = "SYSTEM"
-
-  app_port {
-    protocol = "TCP"
-    port = ["53"]
-  }
-
-  app_port {
-    protocol = "UDP"
-    port = ["53"]
-  }
+  name  = "DNS"
 }
 
-resource "vcd_nsxt_app_port_profile" "dhcp" {
-  name  = "DHCP-Services"
+data "vcd_nsxt_app_port_profile" "dhcp" {
   scope = "SYSTEM"
-
-  app_port {
-    protocol = "UDP"
-    port = ["67"]
-  }
+  name  = "DHCP"
 }
 
-resource "vcd_nsxt_app_port_profile" "ntp" {
-  name  = "NTP-Services"
+data "vcd_nsxt_app_port_profile" "ntp" {
   scope = "SYSTEM"
-
-  app_port {
-    protocol = "UDP"
-    port = ["123"]
-  }
+  name  = "NTP"
 }
 
-resource "vcd_nsxt_app_port_profile" "http" {
-  name  = "HTTP-Services"
+data "vcd_nsxt_app_port_profile" "http" {
   scope = "SYSTEM"
-
-  app_port {
-    protocol = "TCP"
-    port = ["80"]
-  }
+  name  = "HTTP"
 }
 
+# Custom app port profile for non-standard services (e.g., HTTP on port 8080)
 resource "vcd_nsxt_app_port_profile" "http_8080" {
-  name  = "HTTP-8080-Custom"
   scope = "SYSTEM"
+  name  = "HTTP-8080-Custom"
 
   app_port {
     protocol = "TCP"
-    port = ["8080"]
+    port     = ["8080"]
   }
+
+  description = "Custom HTTP service on port 8080"
 }
 
+# Retrieve Edge Gateway details
 data "vcd_nsxt_edgegateway" "mygw" {
-  org = var.vcd.org
+  org  = var.vcd.org
   name = var.networking.edge_gateway
 }
 
+# Org Routed Network - Shared
 resource "vcd_network_routed_v2" "vnet_routed_shared" {
   name = "vnet-shared"
   org  = var.vcd.org
-
 
   edge_gateway_id = data.vcd_edgegateway.mygw.id
 
@@ -70,28 +49,23 @@ resource "vcd_network_routed_v2" "vnet_routed_shared" {
   prefix_length = var.networking.networks["shared"].prefix
   dns1          = var.networking.networks["shared"].dns_server[0]
   dns2          = var.networking.networks["shared"].dns_server[1]
-
 }
 
+# Firewall rule: Shared to Kubernetes
 resource "vcd_nsxv_firewall_rule" "rule-shared_kubernetes" {
   org          = var.vcd.org
   vdc          = var.vcd.vdc
-  
   edge_gateway = data.vcd_edgegateway.mygw.id
 
-  name = "Shared to kubernetes"
+  name = "Shared to Kubernetes"
 
   source {
-    ip_addresses = [
-      var.networking.networks["shared"].subnet,
-    ]
+    ip_addresses      = [var.networking.networks["shared"].subnet]
     gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
   }
 
   destination {
-    ip_addresses = [
-      var.networking.networks["kubernetes"].subnet,
-    ]
+    ip_addresses      = [var.networking.networks["kubernetes"].subnet]
     gateway_interfaces = [vcd_network_routed_v2.kubernetes_net_routed.name]
   }
 
@@ -99,88 +73,77 @@ resource "vcd_nsxv_firewall_rule" "rule-shared_kubernetes" {
     protocol = "Any"
   }
 
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
+  action           = "ALLOW"
+  enabled          = true
+  logging_enabled  = false
+
+  description = "Allows traffic from Shared network to Kubernetes network"
 }
 
+# Firewall rule: Kubernetes to Shared
 resource "vcd_nsxt_firewall_rule" "rule_kubernetes_to_shared" {
   org          = var.vcd.org
   vdc          = var.vcd.vdc
   edge_gateway = var.networking.edge_gateway
 
-  name = "All Networks to Shared"
+  name = "Kubernetes to Shared"
 
   source {
-    ip_addresses = [
-      var.networking.networks["kubernetes"].subnet,
-    ]
-    gateway_interfaces = [
-      vcd_network_routed_v2.kubernetes_net_routed.name,
-    ]
-
+    ip_addresses      = [var.networking.networks["kubernetes"].subnet]
+    gateway_interfaces = [vcd_network_routed_v2.kubernetes_net_routed.name]
   }
 
   destination {
-    ip_addresses = [
-      var.networking.networks["shared"].subnet,
-    ]
+    ip_addresses      = [var.networking.networks["shared"].subnet]
     gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
   }
 
-  service {
-    protocol = "tcp"
-    port     = "53"
-  }
-
   app_port_profile_ids = [
-    vcd_nsxt_app_port_profile.dns.id,
-    vcd_nsxt_app_port_profile.dhcp.id,
-    vcd_nsxt_app_port_profile.ntp.id,
-    vcd_nsxt_app_port_profile.http_8080.id
+    data.vcd_nsxt_app_port_profile.dns.id,        # Use native DNS profile
+    data.vcd_nsxt_app_port_profile.dhcp.id,      # Use native DHCP profile
+    data.vcd_nsxt_app_port_profile.ntp.id,       # Use native NTP profile
+    vcd_nsxt_app_port_profile.http_8080.id       # Use custom HTTP-8080 profile
   ]
 
-  action = "ALLOW"
-  enable = true
-  logging_enabled = false
+  action           = "ALLOW"
+  enabled          = true
+  logging_enabled  = false
+
+  description = "Allows specific traffic from Kubernetes to Shared network"
 }
 
-
+# Firewall rule: Transit to Shared
 resource "vcd_nsxt_firewall_rule" "rule-transit_to_shared" {
   org          = var.vcd.org
   vdc          = var.vcd.vdc
   edge_gateway = var.networking.edge_gateway
 
-  name = "All Networks to Shared"
+  name = "Transit to Shared"
 
   source {
-    ip_addresses = [
-      var.networking.networks["transit"].subnet,
-    ]
-    gateway_interfaces = [
-      vcd_network_routed_v2.vnet_routed_transit.name,
-    ]
+    ip_addresses      = [var.networking.networks["transit"].subnet]
+    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_transit.name]
   }
 
   destination {
-    ip_addresses = [
-      var.networking.networks["shared"].subnet,
-    ]
+    ip_addresses      = [var.networking.networks["shared"].subnet]
     gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
   }
 
-  app_port_profile_ids= [
-    vcd_nsxt_app_port_profile.dns.id,
-    vcd_nsxt_app_port_profile.ntp.id,
-    vcd_nsxt_app_port_profile.ntp.id,
-    vcd_nsxt_app_port_profile.http.id
+  app_port_profile_ids = [
+    data.vcd_nsxt_app_port_profile.dns.id,        # Use native DNS profile
+    data.vcd_nsxt_app_port_profile.ntp.id,       # Use native NTP profile
+    data.vcd_nsxt_app_port_profile.http.id       # Use native HTTP profile
   ]
 
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
+  action           = "ALLOW"
+  enabled          = true
+  logging_enabled  = false
+
+  description = "Allows specific traffic from Transit to Shared network"
 }
 
+# Firewall rule: Shared outbound
 resource "vcd_nsxt_firewall_rule" "rule-shared-outbound" {
   org          = var.vcd.org
   vdc          = var.vcd.vdc
@@ -189,9 +152,7 @@ resource "vcd_nsxt_firewall_rule" "rule-shared-outbound" {
   name = "Shared - Outbound"
 
   source {
-    ip_addresses = [
-      var.networking.networks["shared"].subnet,
-    ]
+    ip_addresses      = [var.networking.networks["shared"].subnet]
     gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
   }
 
@@ -203,43 +164,42 @@ resource "vcd_nsxt_firewall_rule" "rule-shared-outbound" {
     protocol = "Any"
   }
 
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
+  action           = "ALLOW"
+  enabled          = true
+  logging_enabled  = false
+
+  description = "Allows all outbound traffic from Shared network"
 }
 
+# NAT rule: Outbound SNAT for Shared network
 resource "vcd_nsxt_nat_rule" "outbound_snat_shared" {
-  org                = var.vcd.org
-  edge_gateway_id    = data.vcd_nsxt_edgegateway.mygw.id
+  org             = var.vcd.org
+  edge_gateway_id = data.vcd_nsxt_edgegateway.mygw.id
 
-  name               = "Outbound - Shared"
-  rule_type          = "SNAT"
-  description        = "Outbound - Shared"
+  name            = "Outbound - Shared"
+  rule_type       = "SNAT"
+  description     = "Outbound - Shared"
 
   internal_address = var.networking.networks["shared"].subnet
   external_address = var.vcd.external_network.ip
-  enabled            = true
-  logging            = false
+  enabled          = true
+  logging          = false
 }
 
+# Firewall rule: Shared to Transit
 resource "vcd_nsxv_firewall_rule" "rule-shared_to_transit" {
   org          = var.vcd.org
-  
   edge_gateway = var.networking.edge_gateway
 
-  name = "Shared to transit"
+  name = "Shared to Transit"
 
   source {
-    ip_addresses = [
-      var.networking.networks["shared"].subnet,
-    ]
+    ip_addresses      = [var.networking.networks["shared"].subnet]
     gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
   }
 
   destination {
-    ip_addresses = [
-      var.networking.networks["transit"].subnet,
-    ]
+    ip_addresses      = [var.networking.networks["transit"].subnet]
     gateway_interfaces = [vcd_network_routed_v2.vnet_routed_transit.name]
   }
 
@@ -247,22 +207,22 @@ resource "vcd_nsxv_firewall_rule" "rule-shared_to_transit" {
     protocol = "Any"
   }
 
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
+  action           = "ALLOW"
+  enabled          = true
+  logging_enabled  = false
+
+  description = "Allows traffic from Shared network to Transit network"
 }
 
-
+# Attach routed network to Shared vApp
 resource "vcd_vapp_org_network" "vapp_org_net_shared" {
-
-  vapp_name = vcd_vapp.vapp_shared.name
-
-  # Comment below line to create an isolated vApp network
+  vapp_name        = vcd_vapp.vapp_shared.name
   org_network_name = vcd_network_routed_v2.vnet_routed_shared.name
 
   depends_on = [vcd_vapp.vapp_shared]
 }
 
+# Create Shared vApp
 resource "vcd_vapp" "vapp_shared" {
   name        = "vapp-shared"
   description = "Shared vApp"
@@ -272,38 +232,19 @@ resource "vcd_vapp" "vapp_shared" {
   depends_on = [vcd_network_routed_v2.vnet_routed_shared]
 }
 
-/*
-module "vm_ns" {
-  source = "./modules/vm"
-
-  vapp_name = vcd_vapp.vapp_shared.name
-  name      = "ns"
-  #name      = "ns-${var.vcd_org}"
-
-  network_name = vcd_vapp_org_network.vapp_org_net_shared.org_network_name
-  memory       = var.ns_memory
-  cpus         = var.ns_cpus
-  power_on     = true
-
-  ip         = var.ns_ips
-  temp_pass  = var.temp_pass
-  initscript = templatefile("${path.module}/files/linux-initscript.sh", {})
-}
-*/
-
+# Module: Bastion VM
 module "vm_bastion" {
   source = "./modules/vm"
 
-  vapp_name = vcd_vapp.vapp_shared.name
-  name = "bastion-vm"
+  vapp_name     = vcd_vapp.vapp_shared.name
+  name          = "bastion-vm"
 
+  network_name  = vcd_vapp_org_network.vapp_org_net_shared.org_network_name
+  memory        = var.jumpbox_memory
+  cpus          = var.jumpbox_cpus
+  power_on      = true
 
-  network_name = vcd_vapp_org_network.vapp_org_net_shared.org_network_name
-  memory       = var.jumpbox_memory
-  cpus         = var.jumpbox_cpus
-  power_on     = true
-
-  ip         = [var.jumpbox_ip]
-  temp_pass  = var.temp_pass
-  initscript = templatefile("${path.module}/files/linux-initscript.sh", {})
+  ip            = [var.jumpbox_ip]
+  temp_pass     = var.temp_pass
+  initscript    = templatefile("${path.module}/files/linux-initscript.sh", {})
 }
