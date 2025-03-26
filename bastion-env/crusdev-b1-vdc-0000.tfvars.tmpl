@@ -1,66 +1,53 @@
-vcd_user = "api-platform"
+vcd_user = ""
 
-vcd_org                   = "openshift_dev"
-vcd_vdc                   = "vdc-openshift_dev-Ocp"
-vcd_url                   = "https://vcloud-qbc1.cirrusproject.ca/api"
-vcd_external_network_ip   = "63.135.171.183"
-vcd_external_network_name = "ISP-63.135.171.0"
+vcd_org                   = ""
+vcd_vdc                   = ""
+vcd_url                   = "https://----------------------------------/api"
+vcd_external_network_ip   = "xx.xxx.xxx.xxx"
+vcd_external_network_name = "ISP-xx.xxx.xxx.x"
 
 vcd_allow_unverified_ssl = false
 
-#edge_gateway = "edge-openshift_dev"
+#edge_gateway = "edge-gateway"
 
-# Old: 10.0.0.0/24
-# New: 172.16.1.0/24 2-254
-network_name        = "net-ocp"
-ocp_subnet          = "172.16.1.0/24"
-vcd_network_gateway = "172.16.1.1"
+network_name        = "net-"
+ocp_subnet          = "xxx.xx.xx.x/24"
+vcd_network_gateway = "xxx.xx.x.x"
 vcd_network_prefix  = "24"
-vcd_network_dns1    = "1.1.1.1"
-vcd_network_dns2    = "1.0.0.1"
+vcd_network_dns1    = "x.x.x.x"
+vcd_network_dns2    = "x.x.x.x"
 
-# Old 10.100.0.65-126
-# New: 172.16.0.0/24 2-254
-shared_subnet  = "172.16.0.0/26"
-shared_gateway = "172.16.0.1"
+shared_subnet  = "xxx.xx.xx.x/26"
+shared_gateway = "xxx.xx.x.x"
 shared_prefix  = "24"
-shared_dns1    = "1.1.1.1"
-shared_dns2    = "1.0.0.1"
-jumpbox_ip     = "172.16.0.15"
-ns_ips         = ["172.16.0.10"]
+shared_dns1    = "x.x.x.x"
+shared_dns2    = "x.x.x.x"
+jumpbox_ip     = "xxx.xx.x.xx"
+ns_ips         = ["xxx.xx.x.xx"]
 
-# Old: 10.100.0.1-63
-# New: 172.16.255.0/24 1-254
-frontend_subnet  = "172.16.255.0/24"
-frontend_gateway = "172.16.255.1"
+frontend_subnet  = "xxx.xx.xxx.x/24"
+frontend_gateway = "xxx.xx.xxx.x"
 frontend_prefix  = "26"
-frontend_dns1    = "1.1.1.1"
-frontend_dns2    = "1.0.0.1"
+frontend_dns1    = "x.x.x.x"
+frontend_dns2    = "x.x.x.x"
 helper_enabled   = false
-helper_ip        = "10.0.0.10"
+helper_ip        = "xxx.xx.xx.x"
 helper_tmpl      = "helper-vapp"
-lbvip_ip         = "172.16.255.2"
-lb_ips           = ["172.16.255.2"]
+lbvip_ip         = "xxx.xx.xxx.x"
+lb_ips           = ["xxx.xx.xxx.x"]
 
-# Current: 10.102.0.1-30
-# New: 172.16.2.0/24 1-254
 vault_enabled = true
-vault_subnet  = "172.16.2.0/24"
-vault_gateway = "172.16.2.1"
+vault_subnet  = "xxx.xx.x.x/24"
+vault_gateway = "xxx.xx.x.x"
 vault_prefix  = "24"
-vault_dns1    = "1.1.1.1"
-vault_dns2    = "1.0.0.1"
-vault_ips     = ["172.16.2.11", "172.16.2.12", "172.16.2.13"]
+vault_dns1    = "x.x.x.x"
+vault_dns2    = "x.x.x.x"
+vault_ips     = ["xxx.xx.x.xx", "xxx.xx.x.xx", "xxx.xx.x.xx"]
 
 fw_allow_ssh_source = [
-  "64.187.176.220",  # Jumpbox qc1 outbound ip
-  "76.69.161.46",    # Carol
-  "69.157.251.130",  # Charles
-  "69.158.120.202",  # Charles
-  "185.153.179.241", # Charles Thailande
-  "185.153.179.240"  # Charles Thailande
-  "70.51.21.141"     # Fred
+  "64.187.176.220",  # Jumpbox outbound ip
+  "xxx.xx.xx.x",    # USER
 ]
 
-catalog_paas = "Projet Cirrus - Catalogue PaaS"
+catalog_paas = "Catalog"
 

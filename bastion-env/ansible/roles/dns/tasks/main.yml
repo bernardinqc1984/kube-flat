@@ -95,57 +95,57 @@
 
 - name: Create a directory if it does not exist
   file:
-    path: /home/cirrus/certbot/
+    path: /home/crusd/certbot/
     state: directory
     mode: '0750'
-    owner: "cirrus"
+    owner: "crusd"
   tags: certbot
 
 - name: Certbot create script
   template:
     src: certbot_create.j2
-    dest: /home/cirrus/certbot/create.sh
+    dest: /home/crusd/certbot/create.sh
     mode: '0750'
-    owner: "cirrus"
+    owner: "crusd"
   tags: certbot
 
 - name: Certbot create test script
   template:
     src: certbot_create_test.j2
-    dest: /home/cirrus/certbot/create_test.sh
+    dest: /home/crusd/certbot/create_test.sh
     mode: '0750'
-    owner: "cirrus"
+    owner: "crusd"
   tags: certbot
 
 - name: Certbot renew script
   template:
     src: certbot_renew.j2
-    dest: /home/cirrus/certbot/renew.sh
+    dest: /home/crusd/certbot/renew.sh
     mode: '0750'
-    owner: "cirrus"
+    owner: "crusd"
   tags: certbot
 
 - name: Certbot renew test script
   template:
     src: certbot_renew_test.j2
-    dest: /home/cirrus/certbot/renew_test.sh
+    dest: /home/crusd/certbot/renew_test.sh
     mode: '0750'
-    owner: "cirrus"
+    owner: "crusd"
   tags: certbot
 
 - name: Create a directory if it does not exist
   file:
-    path: /home/cirrus/certbot/cloudflare/
+    path: /home/crusd/certbot/cloudflare/
     state: directory
     mode: '0750'
-    owner: "cirrus"
+    owner: "crusd"
   tags: certbot
 
 - name: Installing cloudflare
   copy:
     src: cloudflare
-    dest: /home/cirrus/certbot/cloudflare/credentials
-    owner: "cirrus"
+    dest: /home/crusd/certbot/cloudflare/credentials
+    owner: "crusd"
     mode: '0600'
   tags: certbot
 
@@ -188,7 +188,7 @@
     sudo -i -u {{ item }} -- ansible-galaxy collection install kubernetes.core
   args:
     creates: /home/{{ item }}/.local/bin/ansible
-  with_items: "{{ cirrus_admin }}"
+  with_items: "{{ crusd_admin }}"
   tags: ansible
 
 - name: Install vcd
@@ -197,7 +197,7 @@
     sudo -i -u {{ item }} -- pip3 install --user vcd-cli
   args:
     creates: /home/{{ item }}/.local/bin/vcd
-  with_items: "{{ cirrus_admin }}"
+  with_items: "{{ crusd_admin }}"
   tags: vcd
 
 - name: Add Docker repository
@@ -219,7 +219,7 @@
 #    name: "{{ item }}"
 #    groups: docker
 #    append: yes
-#  with_items: "{{ cirrus_admin }}"
+#  with_items: "{{ crusd_admin }}"
 #  tags: docker
 
 - name: Create a directory if it does not exist

@@ -64,7 +64,7 @@
 - name: Sudo config
   template:
     src: sudoers.j2
-    dest: /etc/sudoers.d/cirrus
+    dest: /etc/sudoers.d/crusd
   tags: sudo
 
 

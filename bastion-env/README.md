@@ -45,24 +45,24 @@ Each resource and rule is tailored to meet specific requirements for managing ne
 
 Note: Configuration à type d'exemple.
 
-Tenant cirrus-dev
+Tenant crusd-dev
 <br>
-DC: qbc1
+DC: 
 <br>
-vcd: vdc-0046
+vcd: 
 <br>
-domaine: dev0046.cirrus.local
+domaine: 
 <br>
-Gateway external network ip: 63.135.171.152
+Gateway external network ip: 
 <br>
-Gateway external network name: ISP-63.135.171.0
+Gateway external network name: 
 
 ## Prérequis
 
 * Dans Keeper, cloner une entré "vcd API" de l'usager api-platform. Mettre à jour selon le nouveau cluster et important de générer un nouveau mot de passe.
 * Dans le nouveau Tenant/Org vCloud:
   * Créer une librairie PaaS.
-  * Y placer le dernier, ou la version actuellement stampé pour Cirrus, [template RHCOS ova](https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/). 
+  * Y placer le dernier, ou la version actuellement stampé pour Crusd, [template RHCOS ova](https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/). 
     * Nommer rhcos-\<_version_\>. Exemple: rhcos-4.10.16.
   * Y placer le dernier template helper, le nommer helper (à reconsidérer).
 
@@ -75,7 +75,7 @@ Il faut ici loader un fichier de configuration. Si vous n'en avez pas pour le d�
 ```
 cd terraform
 
-source ./cirrusdev-qbc1-vdc-0046.config
+source ./crusddev-qbc1-vdc-0046.config
 
 terraform init
 ```
@@ -89,7 +89,7 @@ Note: Le source utilisé lors du init est essentiel pour le plan et apply.
 ```
 cd terraform
 
-source ./cirrusdev-qbc1-vdc-0046.config
+source ./crusddev-qbc1-vdc-0046.config
 
 terraform fmt ; terraform validate && terraform plan
 
@@ -111,7 +111,7 @@ Il faut également créer un fichier ansible/host_vars/\<helper ip\>.yaml où il
 * Ansible
 ```
 cd ansible
-(cd ..; docker run --rm -it -v $(pwd)/ansible:/opt/ansible ansible:latest -i inventory/cirrrus-mlventes-qbc1-vdc-cirrus-mlventes-Linux nfs.yml --tags nfs )
+(cd ..; docker run --rm -it -v $(pwd)/ansible:/opt/ansible ansible:latest -i inventory/cirrrus-mlventes-qbc1-vdc-crusd-mlventes-Linux nfs.yml --tags nfs )
 ```
 * Sur le serveur NFS.
 ```
@@ -141,7 +141,7 @@ showmount -e
 * Validation du volume exporté à partir d'une node externe.
 
 ```
-cirrus-mlventes <user>@ns-1 ~]$ showmount -e 172.16.1.200
+crusd-mlventes <user>@ns-1 ~]$ showmount -e 172.16.1.200
 Export list for 172.16.1.200:
 /data *
 ```
@@ -155,7 +155,7 @@ docker build -t ansible:2.9.27_rockylinux_python39-2 .
 * À partir de votre laptop ou d'un pipeline. L'authentification ce fait via une clé ssh.
 ```
 $ pwd                                                                                                                                                                  
-Git/projet_cirrus/PaaS/ocp-deploy/ansible
+Git/projet_crusd/PaaS/ocp-deploy/ansible
 $ cd ..
 
 $ docker run --rm -it -v $(pwd)/ansible:/opt/ansible ansible:2.9.27 -e @vars.yaml -i inventory/inventory-openshift_inspq_poc-qbc1-vdc-9001-Linux tasks/main.yml

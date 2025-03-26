@@ -11,4 +11,4 @@ dhcppkgs:
   - dhcp-server
   - tftp-server
 
-repo_name: cirrus-kubernetes-vcd
+repo_name: crusd-kubernetes-vcd

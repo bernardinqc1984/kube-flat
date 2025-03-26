@@ -3,7 +3,7 @@ variable "vapp_name" {}
 variable "name" {}
 variable "catalog_name" {
   type    = string
-  default = "Projet Cirrus - Catalogue Templates Linux Serveurs"
+  default = "Catalog"
 }
 variable "template_name" {
   type    = string
