@@ -1,271 +1,146 @@
-# Retrieve native application port profiles
-data "vcd_nsxt_app_port_profile" "http" {
-  scope = "SYSTEM"
-  name  = "HTTP"
+# Configuration Edge Gateway NSX-T
+data "vcd_nsxt_edgegateway" "mygw" {
+  org  = var.vcd.org
+  name = var.networking.edge_gateway
 }
 
-data "vcd_nsxt_app_port_profile" "https" {
-  scope = "SYSTEM"
-  name  = "HTTPS"
+# Profils de ports natifs
+data "vcd_nsxt_app_port_profile" "http" { 
+  scope = "SYSTEM" 
+  name  = "HTTP" 
 }
 
-data "vcd_nsxt_app_port_profile" "ssh" {
-  scope = "SYSTEM"
-  name  = "SSH"
+data "vcd_nsxt_app_port_profile" "https" { 
+  scope = "SYSTEM" 
+  name  = "HTTPS" 
 }
 
-# Custom profiles only for non-standard services
+data "vcd_nsxt_app_port_profile" "ssh" { 
+  scope = "SYSTEM" 
+  name  = "SSH" 
+}
+
+# Profils personnalisés
 resource "vcd_nsxt_app_port_profile" "haproxyadmin" {
   scope = "SYSTEM"
   name  = "HAProxy admin Port"
-
-  app_port {
-    protocol = "TCP"
-    port     = "9000"
+  app_port { 
+    protocol = "TCP" 
+    port     = ["9000"] 
   }
-
-  description = "HAProxy administration port"
 }
 
 resource "vcd_nsxt_app_port_profile" "api" {
   scope = "SYSTEM"
   name  = "API Port"
-
-  app_port {
-    protocol = "TCP"
-    port     = "6443"
+  app_port { 
+    protocol = "TCP" 
+    port     = ["6443"] 
   }
-
-  description = "Kubernetes API port"
 }
 
-resource "vcd_nsxt_app_port_profile" "ns_ssh" {
-  scope = "SYSTEM"
-  name  = "NS SSH Port"
+# Firewall consolidé avec paramètres complets
+resource "vcd_nsxt_firewall" "main" {
+  org             = var.vcd.org
+  edge_gateway_id = data.vcd_nsxt_edgegateway.mygw.id
 
-  app_port {
-    protocol = "TCP"
-    port     = ["8445-8446"]
+  rule {
+    name             = "haproxy-admin-inbound"
+    direction        = "IN"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+
+    source_ids        = vcd.networking.networks["fw_rules"].allow_ssh_source
+    destination_ids   = [var.vcd.external_network.ip]
+    app_port_profile_ids = [vcd_nsxt_app_port_profile.haproxyadmin.id]
   }
 
-  description = "Specific SSH ports for NS server access"
-}
+  rule {
+    name             = "jumpbox-ssh-inbound"
+    direction        = "IN"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
 
-# Retrieve the Edge Gateway
-data "vcd_edgegateway" "mygw" {
-  name = var.networking.edge_gateway
-  org  = var.vcd.org
-  vdc  = var.vcd.vdc
-}
-
-# Firewall rules for administrative access
-resource "vcd_nsxt_firewall_rule" "rule-haproxyadmin" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "HAProxy admin - Inbound"
-
-  source {
-    ip_addresses = var.networking.networks["fw_rules"].allow_ssh_source
+    source_ids        = var.networking.fw_rules.allow_ssh_source
+    destination_ids   = [var.vcd.external_network.ip]
+    app_port_profile_ids = [data.vcd_nsxt_app_port_profile.ssh.id]
   }
 
-  destination {
-    ip_addresses = var.vcd.external_network.ip
-  }
+  rule {
+    name             = "transit-to-kubernetes"
+    direction        = "IN_OUT"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
 
-  app_port_profile_ids = [
-    vcd_nsxt_app_port_profile.haproxyadmin.id
-  ]
-
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
-
-  description = "Allows access to the HAProxy administration interface"
-}
-
-resource "vcd_nsxt_firewall_rule" "rule-jumpbox" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "Jumpbox - Inbound"
-
-  source {
-    ip_addresses = var.networking.fw_allow_ssh_source
-  }
-
-  destination {
-    ip_addresses = [var.vcd.external_network_ip]
-  }
-
-  app_port_profile_ids = [
-    data.vcd_nsxt_app_port_profile.ssh.id
-  ]
-
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
-
-  description = "Allows SSH access to the Jumpbox server"
-}
-
-# Firewall rules for communication between networks
-resource "vcd_nsxt_firewall_rule" "rule-transit_kubernetes" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "transit to kubernetes"
-
-  source {
-    ip_addresses = [
-      var.networking.networks["transit"].subnet,
+    source_ids       = [vcd_network_routed_v2.vnet_routed_transit.id]
+    destination_ids  = [vcd_network_routed_v2.kubernetes_net_routed.id]
+    app_port_profile_ids = [
+      data.vcd_nsxt_app_port_profile.ssh.id,
+      data.vcd_nsxt_app_port_profile.http.id,
+      data.vcd_nsxt_app_port_profile.https.id,
+      vcd_nsxt_app_port_profile.api.id
     ]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_transit.name]
   }
 
-  destination {
-    ip_addresses = [
-      var.networking.networks["kubernetes"].subnet,
+  rule {
+    name             = "api-external-access"
+    direction        = "IN"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+
+    source_ids        = var.networking.networks["fw_rules"].allow_ssh_source
+    destination_ids   = [var.vcd.external_network.ip]
+    app_port_profile_ids = [vcd_nsxt_app_port_profile.api.id]
+  }
+
+  rule {
+    name             = "lb-traffic"
+    direction        = "IN"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+
+    source_ids        = ["any"]
+    destination_ids   = [var.vcd.external_network.ip]
+    app_port_profile_ids = [
+      data.vcd_nsxt_app_port_profile.http.id,
+      data.vcd_nsxt_app_port_profile.https.id,
+      vcd_nsxt_app_port_profile.api.id
     ]
-    gateway_interfaces = [vcd_network_routed_v2.kubernetes_net_routed.name]
   }
-
-  app_port_profile_ids = [
-    data.vcd_nsxt_app_port_profile.ssh.id,
-    data.vcd_nsxt_app_port_profile.http.id,
-    data.vcd_nsxt_app_port_profile.https.id,
-    vcd_nsxt_app_port_profile.api.id
-  ]
-
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
-
-  description = "Allows communication between transit and Kubernetes networks"
 }
 
-# Firewall rules for external services
-resource "vcd_nsxt_firewall_rule" "rule-api" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "API"
-
-  source {
-    ip_addresses = var.networking.networks["fw_rules"].allow_ssh_source
-  }
-
-  destination {
-    ip_addresses = var.vcd.external_network.ip
-  }
-
-  app_port_profile_ids = [
-    vcd_nsxt_app_port_profile.api.id
-  ]
-
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
-
-  description = "Allows access to the Kubernetes API"
-}
-
-resource "vcd_nsxt_firewall_rule" "rule-lb" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "LB"
-
-  source {
-    ip_addresses = ["any"]
-  }
-
-  destination {
-    ip_addresses = [var.vcd.external_network_ip]
-  }
-
-  app_port_profile_ids = [
-    data.vcd_nsxt_app_port_profile.http.id,
-    data.vcd_nsxt_app_port_profile.https.id,
-    vcd_nsxt_app_port_profile.api.id
-  ]
-
-  action          = "ALLOW"
-  enabled         = true
-  logging_enabled = false
-
-  description = "Allows HTTP/HTTPS/API traffic to the load balancer"
-}
-
-# NAT rules for services
-resource "vcd_nsxt_nat_rule" "outbound_snat_kubernetes" {
+# NAT Rules 
+resource "vcd_nsxt_nat_rule" "snat_kubernetes" {
   org                = var.vcd.org
-  edge_gateway_id    = data.vcd_edgegateway.mygw.id
+  edge_gateway_id    = data.vcd_nsxt_edgegateway.mygw.id
   name               = "Outbound - Kubernetes"
   rule_type          = "SNAT"
+  description        = "Outbound - Kubernetes"
   internal_address   = var.networking.networks["kubernetes"].subnet
   external_address   = var.vcd.external_network.ip
   enabled            = true
-  description        = "Outbound - Kubernetes"
-}
-
-resource "vcd_nsxt_nat_rule" "outbound_snat_transit" {
-  org                = var.vcd.org
-  edge_gateway_id    = data.vcd_edgegateway.mygw.id
-  name               = "Outbound - transit"
-  rule_type          = "SNAT"
-  internal_address   = var.networking.networks["transit"].subnet
-  external_address   = var.vcd.external_network.ip
-  description        = "Outbound - transit"
 }
 
 resource "vcd_nsxt_nat_rule" "ssh_dnat_jumpbox" {
   org                = var.vcd.org
-
-  edge_gateway_id    = data.vcd_edgegateway.mygw.id
-
+  edge_gateway_id    = data.vcd_nsxt_edgegateway.mygw.id
   name               = "SSH DNAT Jumpbox"
   rule_type          = "DNAT"
   description        = "SSH Jumpbox"
-
-  external_address   = tolist(data.vcd_edgegateway.mygw.external_ip_addresses)[0].primary_ip_address
-  internal_address = var.networking.shared.jumpbox_ip
+  external_address   = data.vcd_nsxt_edgegateway.mygw.primary_ip
+  internal_address   = var.networking.shared.jumpbox_ip
   app_port_profile_id = data.vcd_nsxt_app_port_profile.ssh.id
-  dnat_external_port = data.vcd_nsxt_app_port_profile.ssh.app_port[1].port
-  enabled            = true
-  logging            = true
-}
-
-resource "vcd_nsxt_nat_rule" "http_dnat_lb" {
-  org                = var.vcd.org
-  edge_gateway_id    = data.vcd_edgegateway.mygw.id
-  name               = "HTTP DNAT LB"
-  rule_type          = "DNAT"
-  description        = "HTTP"
-  external_address = tolist(data.vcd_edgegateway.mygw.external_ip_addresses)[0].primary_ip_address
-  internal_address = var.networking.lb.vip_ip
-  app_port_profile_id = data.vcd_nsxt_app_port_profile.http.id
-  dnat_external_port = data.vcd_nsxt_app_port_profile.http.app_port[0].port
-  enabled            = true
-  logging            = true
-}
-
-
-resource "vcd_nsxt_nat_rule" "https_dnat_lb" {
-  org                = var.vcd.org
-  edge_gateway_id    = data.vcd_edgegateway.mygw.id
-  name               = "HTTPS DNAT LB"
-  rule_type          = "DNAT"
-  description        = "HTTPS"
-  external_address = tolist(data.vcd_edgegateway.mygw.external_ip_addresses)[0].primary_ip_address
-  internal_address = var.networking.lb.vip_ip
-  app_port_profile_id = data.vcd_nsxt_app_port_profile.https.id
-  dnat_external_port = data.vcd_nsxt_app_port_profile.https.app_port[0].port
+  dnat_external_port = "22"
   enabled            = true
   logging            = true
 }

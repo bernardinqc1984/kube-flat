@@ -108,8 +108,8 @@ output "firewall_rules" {
       enabled = vcd_nsxt_firewall_rule.rule-transit_kubernetes.enabled
     }
     shared_to_kubernetes = {
-      name = vcd_nsxv_firewall_rule.rule-shared_kubernetes.name
-      enabled = vcd_nsxv_firewall_rule.rule-shared_kubernetes.enabled
+      name = vcd_nsxt_firewall_rule.rule-shared_kubernetes.name
+      enabled = vcd_nsxt_firewall_rule.rule-shared_kubernetes.enabled
     }
     kubernetes_to_shared = {
       name = vcd_nsxt_firewall_rule.rule_kubernetes_to_shared.name

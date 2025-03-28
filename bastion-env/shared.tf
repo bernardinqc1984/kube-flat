@@ -43,7 +43,7 @@ resource "vcd_network_routed_v2" "vnet_routed_shared" {
   name = "vnet-shared"
   org  = var.vcd.org
 
-  edge_gateway_id = data.vcd_edgegateway.mygw.id
+  edge_gateway_id = data.vcd_nsxt_edgegateway.mygw.id
 
   gateway       = var.networking.networks["shared"].gateway
   prefix_length = var.networking.networks["shared"].prefix
@@ -51,124 +51,89 @@ resource "vcd_network_routed_v2" "vnet_routed_shared" {
   dns2          = var.networking.networks["shared"].dns_server[1]
 }
 
-# Firewall rule: Shared to Kubernetes
-resource "vcd_nsxv_firewall_rule" "rule-shared_kubernetes" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = data.vcd_edgegateway.mygw.id
+# NSX-T Firewall Rules
+resource "vcd_nsxt_firewall" "main" {
+  org             = var.vcd.org
+  edge_gateway_id = data.vcd_nsxt_edgegateway.mygw.id
 
-  name = "Shared to Kubernetes"
+  # Rule 1: Shared to Kubernetes
+  rule {
+    name             = "Shared to Kubernetes"
+    direction        = "IN_OUT"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+  source_ids = [var.networking.networks["shared"].subnet]
 
-  source {
-    ip_addresses      = [var.networking.networks["shared"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
-  }
-
-  destination {
-    ip_addresses      = [var.networking.networks["kubernetes"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.kubernetes_net_routed.name]
-  }
-
-  service {
-    protocol = "Any"
-  }
-
-  action           = "ALLOW"
-  enabled          = true
-  logging_enabled  = false
-
-  description = "Allows traffic from Shared network to Kubernetes network"
-}
-
-# Firewall rule: Kubernetes to Shared
-resource "vcd_nsxt_firewall_rule" "rule_kubernetes_to_shared" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "Kubernetes to Shared"
-
-  source {
-    ip_addresses      = [var.networking.networks["kubernetes"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.kubernetes_net_routed.name]
-  }
-
-  destination {
-    ip_addresses      = [var.networking.networks["shared"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
-  }
-
+  destination_ids = [var.networking.networks["kubernetes"].subnet]
   app_port_profile_ids = [
-    data.vcd_nsxt_app_port_profile.dns.id,        # Use native DNS profile
-    data.vcd_nsxt_app_port_profile.dhcp.id,      # Use native DHCP profile
-    data.vcd_nsxt_app_port_profile.ntp.id,       # Use native NTP profile
-    vcd_nsxt_app_port_profile.http_8080.id       # Use custom HTTP-8080 profile
+    data.vcd_nsxt_app_port_profile.dns.id,
+    data.vcd_nsxt_app_port_profile.dhcp.id,
+    data.vcd_nsxt_app_port_profile.ntp.id,
+    data.vcd_nsxt_app_port_profile.http.id,
+    vcd_nsxt_app_port_profile.http_8080.id
   ]
-
-  action           = "ALLOW"
-  enabled          = true
-  logging_enabled  = false
-
-  description = "Allows specific traffic from Kubernetes to Shared network"
-}
-
-# Firewall rule: Transit to Shared
-resource "vcd_nsxt_firewall_rule" "rule-transit_to_shared" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "Transit to Shared"
-
-  source {
-    ip_addresses      = [var.networking.networks["transit"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_transit.name]
   }
 
-  destination {
-    ip_addresses      = [var.networking.networks["shared"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
+  # Rule 2: Kubernetes to Shared
+  rule {
+    name             = "Kubernetes to Shared"
+    direction        = "IN_OUT"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+    source_ids    = [var.networking.networks["kubernetes"].subnet]
+    destination_ids = [var.networking.networks["shared"].subnet]
+    app_port_profile_ids = [
+      data.vcd_nsxt_app_port_profile.dns.id,
+      data.vcd_nsxt_app_port_profile.dhcp.id,
+      data.vcd_nsxt_app_port_profile.ntp.id,
+      vcd_nsxt_app_port_profile.http_8080.id
+    ]
   }
 
-  app_port_profile_ids = [
-    data.vcd_nsxt_app_port_profile.dns.id,        # Use native DNS profile
-    data.vcd_nsxt_app_port_profile.ntp.id,       # Use native NTP profile
-    data.vcd_nsxt_app_port_profile.http.id       # Use native HTTP profile
-  ]
-
-  action           = "ALLOW"
-  enabled          = true
-  logging_enabled  = false
-
-  description = "Allows specific traffic from Transit to Shared network"
-}
-
-# Firewall rule: Shared outbound
-resource "vcd_nsxt_firewall_rule" "rule-shared-outbound" {
-  org          = var.vcd.org
-  vdc          = var.vcd.vdc
-  edge_gateway = var.networking.edge_gateway
-
-  name = "Shared - Outbound"
-
-  source {
-    ip_addresses      = [var.networking.networks["shared"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
+  # Rule 3: Transit to Shared
+  rule {
+    name             = "Transit to Shared"
+    direction        = "IN_OUT"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+    source_ids    = [var.networking.networks["transit"].subnet]
+    destination_ids = [var.networking.networks["shared"].subnet]
+    app_port_profile_ids = [
+      data.vcd_nsxt_app_port_profile.dns.id,
+      data.vcd_nsxt_app_port_profile.ntp.id,
+      data.vcd_nsxt_app_port_profile.http.id
+    ]
   }
 
-  destination {
-    gateway_interfaces = ["external"]
+  # Rule 4: Shared Outbound
+  rule {
+    name             = "Shared - Outbound"
+    direction        = "OUT"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+    source_ids    = [var.networking.networks["shared"].subnet]
+    destination_ids = ["0.0.0.0/0"]
   }
 
-  service {
-    protocol = "Any"
+  # Rule 5: Shared to Transit
+  rule {
+    name             = "Shared to Transit"
+    direction        = "IN_OUT"
+    ip_protocol      = "IPV4"
+    action           = "ALLOW"
+    enabled          = true
+    logging          = false
+    source_ids    = [var.networking.networks["shared"].subnet]
+    destination_ids = [var.networking.networks["transit"].subnet]
   }
-
-  action           = "ALLOW"
-  enabled          = true
-  logging_enabled  = false
-
-  description = "Allows all outbound traffic from Shared network"
 }
 
 # NAT rule: Outbound SNAT for Shared network
@@ -186,40 +151,10 @@ resource "vcd_nsxt_nat_rule" "outbound_snat_shared" {
   logging          = false
 }
 
-# Firewall rule: Shared to Transit
-resource "vcd_nsxv_firewall_rule" "rule-shared_to_transit" {
-  org          = var.vcd.org
-  edge_gateway = var.networking.edge_gateway
-
-  name = "Shared to Transit"
-
-  source {
-    ip_addresses      = [var.networking.networks["shared"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_shared.name]
-  }
-
-  destination {
-    ip_addresses      = [var.networking.networks["transit"].subnet]
-    gateway_interfaces = [vcd_network_routed_v2.vnet_routed_transit.name]
-  }
-
-  service {
-    protocol = "Any"
-  }
-
-  action           = "ALLOW"
-  enabled          = true
-  logging_enabled  = false
-
-  description = "Allows traffic from Shared network to Transit network"
-}
-
 # Attach routed network to Shared vApp
 resource "vcd_vapp_org_network" "vapp_org_net_shared" {
   vapp_name        = vcd_vapp.vapp_shared.name
   org_network_name = vcd_network_routed_v2.vnet_routed_shared.name
-
-  depends_on = [vcd_vapp.vapp_shared]
 }
 
 # Create Shared vApp
@@ -228,8 +163,6 @@ resource "vcd_vapp" "vapp_shared" {
   description = "Shared vApp"
   org         = var.vcd.org
   vdc         = var.vcd.vdc
-
-  depends_on = [vcd_network_routed_v2.vnet_routed_shared]
 }
 
 # Module: Bastion VM
